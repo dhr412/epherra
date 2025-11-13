@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>Epherra - Secure File Sharing</title>
     <style>
         * {
@@ -490,6 +491,7 @@
             }
         });
 
+        const API_BASE = 'http://localhost:8080';
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const progressBar = document.getElementById('progressBar');
@@ -501,6 +503,8 @@
         const viewCapInput = document.getElementById('viewCapInput');
         const enableTimeCap = document.getElementById('enableTimeCap');
         const timeCapInput = document.getElementById('timeCapInput');
+        const allowDownloads = document.getElementById('allowDownloads');
+        const allowCopying = document.getElementById('allowCopying');
 
         // Set default time to 7 days from now
         const defaultTime = new Date();
@@ -516,14 +520,23 @@
             timeCapInput.disabled = !enableTimeCap.checked;
         });
 
-        // Upload area click
+        copyBtn.addEventListener('click', () => {
+            shareableLink.select();
+            document.execCommand('copy');
+            copyBtn.textContent = 'Copied!';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+                copyBtn.textContent = 'Copy';
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        });
+
         uploadArea.addEventListener('click', () => {
             if (!uploadArea.classList.contains('uploading')) {
                 fileInput.click();
             }
         });
 
-        // Drag and drop
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -549,7 +562,6 @@
             }
         });
 
-        // Handle file upload
         function handleFileUpload(file) {
             const validExtensions = ['.pdf', '.ipynb'];
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
@@ -563,68 +575,60 @@
             progressBar.style.display = 'block';
             linkDisplay.classList.remove('show');
 
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 30;
-                if (progress > 100) progress = 100;
-                progressFill.style.width = progress + '%';
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Data = e.target.result.split(',')[1];
+                const uploadData = {
+                    filename: file.name,
+                    fileType: file.type || 'application/octet-stream',
+                    fileData: base64Data,
+                    allowDownloads: allowDownloads.checked,
+                    allowCopying: allowCopying.checked,
+                    maxViews: enableViewCap.checked ? parseInt(viewCapInput.value) : null,
+                    expiresAt: enableTimeCap.checked ? new Date(timeCapInput.value).toISOString() : null,
+                };
 
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    setTimeout(() => {
-                        completeUpload(file);
-                    }, 500);
-                }
-            }, 200);
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += Math.random() * 15 + 5;
+                    if (progress > 95) progress = 95;
+                    progressFill.style.width = progress + '%';
+                }, 100);
+
+                fetch(`${API_BASE}/api/upload`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(uploadData),
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        clearInterval(interval);
+                        progressFill.style.width = '100%';
+                        return response.json();
+                    })
+                    .then(data => {
+                        setTimeout(() => {
+                            const token = data.token;
+                            const url = `${window.location.origin}/view/${token}`;
+                            shareableLink.value = url;
+                            linkDisplay.classList.add('show');
+                            uploadArea.classList.remove('uploading');
+                            progressBar.style.display = 'none';
+                            progressFill.style.width = '0%';
+                        }, 500);
+                    })
+                    .catch(error => {
+                        clearInterval(interval);
+                        progressFill.style.width = '0%';
+                        uploadArea.classList.remove('uploading');
+                        progressBar.style.display = 'none';
+                        alert('Upload failed: ' + error.message);
+                    });
+            };
+            reader.readAsDataURL(file);
         }
-
-        function completeUpload(file) {
-            const token = generateToken();
-            const url = `${window.location.origin}/view/${token}`;
-
-            shareableLink.value = url;
-            linkDisplay.classList.add('show');
-
-            setTimeout(() => {
-                uploadArea.classList.remove('uploading');
-                progressBar.style.display = 'none';
-                progressFill.style.width = '0%';
-            }, 500);
-
-            console.log('Upload config:', {
-                filename: file.name,
-                allowDownloads: document.getElementById('allowDownloads').checked,
-                allowCopying: document.getElementById('allowCopying').checked,
-                maxViews: enableViewCap.checked ? viewCapInput.value : null,
-                expiresAt: enableTimeCap.checked ? timeCapInput.value : null
-            });
-        }
-
-        function generateToken() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                const r = Math.random() * 16 | 0;
-                const v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        // Copy to clipboard
-        copyBtn.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(shareableLink.value);
-                copyBtn.textContent = 'Copied!';
-                copyBtn.classList.add('copied');
-
-                setTimeout(() => {
-                    copyBtn.textContent = 'Copy';
-                    copyBtn.classList.remove('copied');
-                }, 2000);
-            } catch (err) {
-                shareableLink.select();
-                document.execCommand('copy');
-                copyBtn.textContent = 'Copied!';
-            }
-        });
     </script>
 </body>
 

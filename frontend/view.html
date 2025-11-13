@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Epherra - File Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #473472 0%, #53629E 25%, #87BAC3 50%, #87BAC3 75%, #D6F4ED 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #e8e8f0;
+            overflow: hidden;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 48px;
+            background: rgba(71, 52, 114, 0.4);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(135, 186, 195, 0.2);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: #D6F4ED;
+        }
+
+        .header-button {
+            padding: 10px 20px;
+            border: 1px solid rgba(135, 186, 195, 0.3);
+            background: rgba(135, 186, 195, 0.1);
+            color: #87BAC3;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .header-button:hover {
+            background: rgba(135, 186, 195, 0.2);
+            border-color: rgba(135, 186, 195, 0.5);
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        #viewerArea {
+            border: 2px solid rgba(135, 186, 195, 0.5);
+            border-radius: 20px;
+            padding: 80px 40px;
+            text-align: center;
+            background: rgba(71, 52, 114, 0.3);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #viewerArea:hover {
+            border-color: rgba(135, 186, 195, 0.8);
+            background: rgba(71, 52, 114, 0.5);
+            transform: translateY(-2px);
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            border-radius: 12px;
+            overflow: auto;
+        }
+
+        #viewer img,
+        #viewer embed,
+        #viewer video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #viewer pre {
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            white-space: pre-wrap;
+            text-align: left;
+            overflow: auto;
+        }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .info-section h1 {
+            font-size: 42px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #D6F4ED;
+        }
+
+        .info-section p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #D6F4ED;
+        }
+
+        .options {
+            background: rgba(71, 52, 114, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(135, 186, 195, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 0;
+        }
+
+        .options::before {
+            content: 'File Info';
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #87BAC3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .file-detail {
+            font-size: 14px;
+            color: #D6F4ED;
+            margin-bottom: 8px;
+        }
+
+        .error-message {
+            color: #f44336;
+            font-size: 16px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .download-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #87BAC3 0%, #D6F4ED 100%);
+            color: #473472;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .download-btn.hidden {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            header {
+                padding: 20px 32px;
+            }
+
+            main {
+                padding: 32px;
+            }
+
+            .info-section h1 {
+                font-size: 32px;
+            }
+
+            #viewerArea {
+                min-height: 300px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .info-section h1 {
+                font-size: 28px;
+            }
+
+            main {
+                padding: 20px;
+            }
+
+            header {
+                padding: 16px 20px;
+            }
+
+            #viewerArea {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">Epherra</div>
+        <a class="MuiButtonBase-root MuiIconButton-root" tabindex="0" aria-disabled="false"
+            href="https://github.com/dhr412/epherra" target="_blank" rel="noopener"
+            style="padding: 8px; color: #D6F4ED; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.3s ease;">
+            <svg class="MuiSvgIcon-root" focusable="false" viewBox="0 0 24 24" aria-hidden="true"
+                style="width: 24px; height: 24px; fill: currentColor;">
+                <path
+                    d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2 0 1.9 1.2 1.9 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1 .9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3">
+                </path>
+            </svg>
+        </a>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="upload-section">
+                <div id="viewerArea">
+                    <span id="loadingIcon" style="font-size: 48px; margin-bottom: 20px;">⏳</span>
+                    <div id="viewer"></div>
+                    <button id="downloadBtn" class="download-btn hidden">Download</button>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <div>
+                    <h1 id="fileTitle">Loading file...</h1>
+                    <p id="fileDesc">Securely view your ephemeral file. Content expires automatically.</p>
+                </div>
+
+                <div class="options" id="fileInfo">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+            }
+        });
+
+        const API_BASE = 'http://localhost:8080';
+        const token = window.location.pathname.split('/').pop();
+        const viewer = document.getElementById('viewer');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const fileTitle = document.getElementById('fileTitle');
+        const fileDesc = document.getElementById('fileDesc');
+        const fileInfo = document.getElementById('fileInfo');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        if (!token) {
+            viewer.innerHTML = '<div class="error-message">Invalid link</div>';
+            return;
+        }
+
+        fetch(`${API_BASE}/api/view/${token}`, {method: 'HEAD'}) // Use HEAD for metadata only
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('File not found or expired');
+                }
+                const contentType = response.headers.get('Content-Type');
+                const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'file';
+                const allowDownloads = response.headers.get('X-Allow-Downloads') === 'true';
+                const allowCopying = response.headers.get('X-Allow-Copying') === 'true';
+
+                fileTitle.textContent = filename;
+                fileInfo.innerHTML = `
+                    <div class="file-detail"><strong>Type:</strong> ${contentType}</div>
+                    <div class="file-detail"><strong>Downloads:</strong> ${allowDownloads ? 'Allowed' : 'Disabled'}</div>
+                    <div class="file-detail"><strong>Copying:</strong> ${allowCopying ? 'Allowed' : 'Disabled'}</div>
+                `;
+
+                if (!allowDownloads) {
+                    downloadBtn.classList.add('hidden');
+                }
+
+                return fetch(`${API_BASE}/api/view/${token}`);
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                loadingIcon.style.display = 'none';
+                const url = URL.createObjectURL(blob);
+                const type = blob.type;
+
+                if (type.startsWith('image/')) {
+                    viewer.innerHTML = `<img src="${url}" alt="Image">`;
+                } else if (type === 'application/pdf') {
+                    viewer.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px">`;
+                } else if (type.startsWith('video/')) {
+                    viewer.innerHTML = `<video src="${url}" controls width="100%" height="auto"></video>`;
+                } else if (type.startsWith('text/') || type.includes('json') || type.includes('ipynb')) {
+                    return fetch(url).then(r => r.text()).then(text => {
+                        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        viewer.innerHTML = `<pre>${escaped}</pre>`;
+                        if (allowCopying) {
+                            const copyBtn = document.createElement('button');
+                            copyBtn.textContent = 'Copy Content';
+                            copyBtn.className = 'download-btn';
+                            copyBtn.onclick = () => {
+                                navigator.clipboard.writeText(text);
+                                copyBtn.textContent = 'Copied!';
+                                setTimeout(() => copyBtn.textContent = 'Copy Content', 2000);
+                            };
+                            viewer.appendChild(copyBtn);
+                        }
+                    });
+                } else {
+                    viewer.innerHTML = '<div class="error-message">Unsupported file type</div>';
+                    return;
+                }
+
+                downloadBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileTitle.textContent;
+                    a.click();
+                };
+                if (allowDownloads) downloadBtn.classList.remove('hidden');
+            })
+            .catch(error => {
+                loadingIcon.style.display = 'none';
+                viewer.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+            });
+    </script>
+</body>
+
+</html>
