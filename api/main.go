@@ -237,39 +237,70 @@ func contains(slice []string, item string) bool {
 	return slices.Contains(slice, item)
 }
 
-func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+func Handler(w http.ResponseWriter, r *http.Request) {
+	if mongoClient == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	mongoURI := os.Getenv("MONGODB_URI")
-	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
-	if err == nil {
-		err = client.Ping(ctx, nil)
-	}
-	if err != nil {
-		panic(err)
-	}
-	mongoClient = client
+		mongoURI := os.Getenv("MONGODB_URI")
+		client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
+		if err == nil {
+			err = client.Ping(ctx, nil)
+		}
+		if err != nil {
+			http.Error(w, "Database connection failed", http.StatusInternalServerError)
+			return
+		}
 
-	indexModel := mongo.IndexModel{
-		Keys:    bson.M{"expiresAt": 1},
-		Options: options.Index().SetExpireAfterSeconds(0),
-	}
-	collection.Indexes().CreateOne(ctx, indexModel)
-
-	db := client.Database("epherra")
-	collection = db.Collection("files")
-
-	bucket = db.GridFSBucket(options.GridFSBucket().SetName("fs"))
-
-	http.HandleFunc("/api/upload", corsHandler(uploadHandler))
-	http.HandleFunc("/api/view/", corsHandler(viewHandler))
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+		mongoClient = client
+		db := client.Database("epherra")
+		collection = db.Collection("files")
+		bucket = db.GridFSBucket(options.GridFSBucket().SetName("fs"))
 	}
 
-	fmt.Printf("Server running on port %s\n", port)
-	http.ListenAndServe(":"+port, nil)
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/upload"):
+		corsHandler(uploadHandler)(w, r)
+	case strings.Contains(r.URL.Path, "/view/"):
+		corsHandler(viewHandler)(w, r)
+	default:
+		http.Error(w, "Not found", http.StatusNotFound)
+	}
 }
+
+// func main() {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+//
+// 	mongoURI := os.Getenv("MONGODB_URI")
+// 	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
+// 	if err == nil {
+// 		err = client.Ping(ctx, nil)
+// 	}
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	mongoClient = client
+//
+// 	indexModel := mongo.IndexModel{
+// 		Keys:    bson.M{"expiresAt": 1},
+// 		Options: options.Index().SetExpireAfterSeconds(0),
+// 	}
+// 	collection.Indexes().CreateOne(ctx, indexModel)
+//
+// 	db := client.Database("epherra")
+// 	collection = db.Collection("files")
+//
+// 	bucket = db.GridFSBucket(options.GridFSBucket().SetName("fs"))
+//
+// 	http.HandleFunc("/api/upload", corsHandler(uploadHandler))
+// 	http.HandleFunc("/api/view/", corsHandler(viewHandler))
+//
+// 	port := os.Getenv("PORT")
+// 	if port == "" {
+// 		port = "8080"
+// 	}
+//
+// 	fmt.Printf("Server running on port %s\n", port)
+// 	http.ListenAndServe(":"+port, nil)
+// }
