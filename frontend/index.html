@@ -16,10 +16,8 @@
             -ms-user-select: none;
         }
 
-        /* Full-screen layout with cosmic gradient background */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-            /* Updated gradient to new purple-to-teal palette */
             background: linear-gradient(135deg, #473472 0%, #53629E 25%, #87BAC3 50%, #87BAC3 75%, #D6F4ED 100%);
             background-attachment: fixed;
             min-height: 100vh;
@@ -29,13 +27,11 @@
             overflow: hidden;
         }
 
-        /* New header with glassmorphism */
         header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 24px 48px;
-            /* Updated header background to match new palette */
             background: rgba(71, 52, 114, 0.4);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(135, 186, 195, 0.2);
@@ -44,16 +40,11 @@
         .logo {
             font-size: 28px;
             font-weight: 700;
-            /* background: linear-gradient(135deg, #D6F4ED 30%, #87BAC3 100%); */
-            /* -webkit-background-clip: text; */
-            /* -webkit-text-fill-color: transparent; */
-            /* background-clip: text; */
             color: #D6F4ED;
         }
 
         .header-button {
             padding: 10px 20px;
-            /* Updated button colors to new palette */
             border: 1px solid rgba(135, 186, 195, 0.3);
             background: rgba(135, 186, 195, 0.1);
             color: #87BAC3;
@@ -68,7 +59,6 @@
             border-color: rgba(135, 186, 195, 0.5);
         }
 
-        /* Main content area with full-screen coverage */
         main {
             flex: 1;
             display: flex;
@@ -77,7 +67,6 @@
             padding: 48px;
         }
 
-        /* Split-column layout */
         .container {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -87,9 +76,7 @@
             align-items: stretch;
         }
 
-        /* Modern upload area with glassmorphism */
         #uploadArea {
-            /* Updated border and background to new palette */
             border: 2px dashed rgba(135, 186, 195, 0.5) !important;
             border-radius: 20px;
             padding: 80px 40px !important;
@@ -126,7 +113,6 @@
             left: 0;
             right: 0;
             bottom: 0;
-            /* Updated gradient overlay to new palette */
             background: linear-gradient(135deg, rgba(135, 186, 195, 0.1) 0%, transparent 100%);
             pointer-events: none;
         }
@@ -138,7 +124,6 @@
             z-index: 1;
         }
 
-        /* Modern gradient button styling */
         .upload-text {
             font-size: 20px !important;
             font-weight: 600 !important;
@@ -158,7 +143,6 @@
         .progress-bar {
             width: 100%;
             height: 6px;
-            /* Updated progress bar background */
             background: rgba(135, 186, 195, 0.2);
             border-radius: 3px;
             margin-top: 20px !important;
@@ -169,13 +153,11 @@
 
         .progress-fill {
             height: 100%;
-            /* Updated progress fill gradient */
             background: linear-gradient(90deg, #87BAC3, #D6F4ED);
             width: 0%;
             transition: width 0.3s;
         }
 
-        /* Info section on the right */
         .info-section {
             display: flex;
             flex-direction: column;
@@ -199,9 +181,7 @@
             color: #D6F4ED;
         }
 
-        /* Options section with glassmorphism styling */
         .options {
-            /* Updated options background and border */
             background: rgba(71, 52, 114, 0.3) !important;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(135, 186, 195, 0.2) !important;
@@ -215,7 +195,6 @@
             display: block;
             font-size: 12px;
             font-weight: 700;
-            /* Updated text color */
             color: #87BAC3;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -233,7 +212,6 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
-            /* Updated checkbox accent color */
             accent-color: #87BAC3;
         }
 
@@ -255,7 +233,6 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
-            /* Updated checkbox accent color */
             accent-color: #87BAC3;
         }
 
@@ -268,7 +245,6 @@
         .input-group input[type="number"],
         .input-group input[type="datetime-local"] {
             padding: 8px 12px !important;
-            /* Updated input border and background */
             border: 1px solid rgba(135, 186, 195, 0.3) !important;
             border-radius: 6px !important;
             font-size: 14px;
@@ -292,12 +268,10 @@
             opacity: 0.5;
         }
 
-        /* Link display with modern styling */
         .link-display {
             display: none;
             margin-top: 30px;
             padding: 20px;
-            /* Updated link display background and border */
             background: rgba(71, 52, 114, 0.3) !important;
             border: 1px solid rgba(135, 186, 195, 0.3) !important;
             border-radius: 10px !important;
@@ -348,7 +322,6 @@
         .link-input {
             flex: 1;
             padding: 10px 14px;
-            /* Updated link input border and background */
             border: 1px solid rgba(135, 186, 195, 0.3);
             border-radius: 6px;
             font-size: 14px;
@@ -360,10 +333,8 @@
             background: rgba(135, 186, 195, 0.3);
         }
 
-        /* Modern copy button with gradient */
         .copy-btn {
             padding: 10px 20px !important;
-            /* Updated copy button gradient and text color */
             background: linear-gradient(135deg, #87BAC3 0%, #D6F4ED 100%) !important;
             color: #473472 !important;
             border: none !important;
@@ -385,16 +356,10 @@
             background: #4CAF50 !important;
         }
 
-        /* Footer styling */
-        footer {
-            display: none;
-        }
-
         input[type="file"] {
             display: none;
         }
 
-        /* Responsive design */
         @media (max-width: 1024px) {
             .container {
                 grid-template-columns: 1fr;
@@ -411,17 +376,6 @@
 
             .info-section h1 {
                 font-size: 32px;
-            }
-
-            footer {
-                padding: 20px 32px;
-                flex-direction: column;
-                gap: 20px;
-            }
-
-            .footer-links {
-                gap: 20px;
-                flex-wrap: wrap;
             }
 
             #uploadArea {
@@ -445,11 +399,6 @@
             #uploadArea {
                 padding: 40px 20px !important;
             }
-
-            .footer-links {
-                flex-direction: column;
-                gap: 12px;
-            }
         }
     </style>
 </head>
@@ -457,7 +406,6 @@
 <body>
     <header>
         <div class="logo">Epherra</div>
-        <!-- Replaced "Get updates" button with GitHub logo link -->
         <a class="MuiButtonBase-root MuiIconButton-root" tabindex="0" aria-disabled="false"
             href="https://github.com/dhr412/epherra" target="_blank" rel="noopener"
             style="padding: 8px; color: #D6F4ED; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.3s ease;">
@@ -472,7 +420,6 @@
 
     <main>
         <div class="container">
-            <!-- Upload section on the left -->
             <div class="upload-section">
                 <div id="uploadArea">
                     <span class="upload-icon">📁</span>
@@ -484,7 +431,6 @@
                 </div>
             </div>
 
-            <!-- Info and options section on the right -->
             <div class="info-section">
                 <div>
                     <h1>Simple, ephemeral file sharing</h1>
@@ -528,17 +474,6 @@
             </div>
         </div>
     </main>
-
-    <footer>
-        <div class="footer-links">
-            <a href="#">Why We Built This</a>
-            <a href="#">FAQ</a>
-            <a href="#">Security</a>
-            <a href="#">Legal</a>
-            <a href="#">Twitter</a>
-        </div>
-        <div style="color: #7a85c1;">Protected by encryption</div>
-    </footer>
 
     <input type="file" id="fileInput">
 
