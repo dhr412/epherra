@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epherra - Secure, Ephemeral File Sharing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Full-screen layout with cosmic gradient background */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #0f1b4d 0%, #1a2a80 25%, #3b38a0 50%, #5d4db8 75%, #7a85c1 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: #e8e8f0;
+            overflow: hidden;
+        }
+
+        /* New header with glassmorphism */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 48px;
+            background: rgba(15, 27, 77, 0.4);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(122, 133, 193, 0.2);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #D6F4ED 30%, #B2B0E8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-button {
+            padding: 10px 20px;
+            border: 1px solid rgba(122, 133, 193, 0.3);
+            background: rgba(122, 133, 193, 0.1);
+            color: #b2b0e8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .header-button:hover {
+            background: rgba(122, 133, 193, 0.2);
+            border-color: rgba(122, 133, 193, 0.5);
+        }
+
+        /* Main content area with full-screen coverage */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+        }
+
+        /* Split-column layout */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        /* Modern upload area with glassmorphism */
+        #uploadArea {
+            border: 2px dashed rgba(122, 133, 193, 0.5) !important;
+            border-radius: 20px;
+            padding: 80px 40px !important;
+            text-align: center;
+            background: rgba(26, 42, 128, 0.3) !important;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 0 !important;
+        }
+
+        #uploadArea:hover {
+            border-color: rgba(122, 133, 193, 0.8);
+            background: rgba(26, 42, 128, 0.5) !important;
+            transform: translateY(-2px);
+        }
+
+        #uploadArea.dragover {
+            border-color: rgba(122, 133, 193, 1);
+            background: rgba(26, 42, 128, 0.7) !important;
+        }
+
+        #uploadArea::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(122, 133, 193, 0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .upload-icon {
+            font-size: 48px !important;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Modern gradient button styling */
+        .upload-text {
+            font-size: 20px !important;
+            font-weight: 600 !important;
+            color: #D6F4ED !important;
+            margin-bottom: 8px !important;
+            position: relative;
+            z-index: 1;
+        }
+
+        .upload-subtext {
+            font-size: 14px !important;
+            color: #D6F4ED !important;
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(122, 133, 193, 0.2);
+            border-radius: 3px;
+            margin-top: 20px !important;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7a85c1, #b2b0e8);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Info section on the right */
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .info-section h1 {
+            font-size: 42px;
+            font-weight: 700;
+            line-height: 1.2;
+            color: #D6F4ED;
+        }
+
+        .info-section p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #D6F4ED;
+        }
+
+        .info-section strong {
+            color: #D6F4ED;
+        }
+
+        /* Options section with glassmorphism styling */
+        .options {
+            background: rgba(26, 42, 128, 0.3) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(122, 133, 193, 0.2) !important;
+            border-radius: 12px !important;
+            padding: 24px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .options::before {
+            content: 'Share Options';
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            color: #b2b0e8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px !important;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #7a85c1;
+        }
+
+        .checkbox-group label {
+            font-size: 14px !important;
+            color: #D6F4ED !important;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px !important;
+        }
+
+        .input-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #7a85c1;
+        }
+
+        .input-group label {
+            font-size: 14px !important;
+            color: #D6F4ED !important;
+            cursor: pointer;
+        }
+
+        .input-group input[type="number"],
+        .input-group input[type="datetime-local"] {
+            padding: 8px 12px !important;
+            border: 1px solid rgba(122, 133, 193, 0.3) !important;
+            border-radius: 6px !important;
+            font-size: 14px;
+            background: rgba(26, 42, 128, 0.5) !important;
+            color: #D6F4ED !important;
+            transition: all 0.3s ease;
+            width: auto;
+        }
+
+        .input-group input[type="number"]:focus,
+        .input-group input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: rgba(122, 133, 193, 0.6);
+            background: rgba(26, 42, 128, 0.7) !important;
+        }
+
+        .input-group input[type="number"]:disabled,
+        .input-group input[type="datetime-local"]:disabled {
+            background: rgba(26, 42, 128, 0.2) !important;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Link display with modern styling */
+        .link-display {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(26, 42, 128, 0.3) !important;
+            border: 1px solid rgba(122, 133, 193, 0.3) !important;
+            border-radius: 10px !important;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.3s ease;
+        }
+
+        .link-display.show {
+            display: block !important;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-message {
+            color: #4CAF50;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .link-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #D6F4ED;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .link-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .link-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid rgba(122, 133, 193, 0.3);
+            border-radius: 6px;
+            font-size: 14px;
+            background: rgba(15, 27, 77, 0.5);
+            color: #D6F4ED;
+        }
+
+        .link-input::selection {
+            background: rgba(122, 133, 193, 0.3);
+        }
+
+        /* Modern copy button with gradient */
+        .copy-btn {
+            padding: 10px 20px !important;
+            background: linear-gradient(135deg, #7a85c1 0%, #b2b0e8 100%) !important;
+            color: #0f1b4d !important;
+            border: none !important;
+            border-radius: 6px !important;
+            cursor: pointer;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(122, 133, 193, 0.2);
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(122, 133, 193, 0.3);
+        }
+
+        .copy-btn.copied {
+            background: #4CAF50 !important;
+        }
+
+        /* Footer styling */
+        footer {
+            display: none;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            header {
+                padding: 20px 32px;
+            }
+
+            main {
+                padding: 32px;
+            }
+
+            .info-section h1 {
+                font-size: 32px;
+            }
+
+            footer {
+                padding: 20px 32px;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .footer-links {
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+
+            #uploadArea {
+                min-height: 300px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .info-section h1 {
+                font-size: 28px;
+            }
+
+            main {
+                padding: 20px;
+            }
+
+            header {
+                padding: 16px 20px;
+            }
+
+            #uploadArea {
+                padding: 40px 20px !important;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="logo">Epherra</div>
+        <!-- Replaced "Get updates" button with GitHub logo link -->
+        <a class="MuiButtonBase-root MuiIconButton-root" tabindex="0" aria-disabled="false"
+            href="https://github.com/dhr412/epherra" target="_blank" rel="noopener"
+            style="padding: 8px; color: #D6F4ED; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.3s ease;">
+            <svg class="MuiSvgIcon-root" focusable="false" viewBox="0 0 24 24" aria-hidden="true"
+                style="width: 24px; height: 24px; fill: currentColor;">
+                <path
+                    d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2 0 1.9 1.2 1.9 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1 .9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3">
+                </path>
+            </svg>
+        </a>
+    </header>
+
+    <main>
+        <div class="container">
+            <!-- Upload section on the left -->
+            <div class="upload-section">
+                <div id="uploadArea">
+                    <span class="upload-icon">📁</span>
+                    <div class="upload-text">Select files to send</div>
+                    <div class="upload-subtext">Or drag stuff here</div>
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info and options section on the right -->
+            <div class="info-section">
+                <div>
+                    <h1>Simple, private file sharing</h1>
+                    <p>Epherra lets you share files with <strong>end-to-end encryption</strong> and a link that
+                        automatically expires. So you can keep what you share private and make sure your stuff doesn't
+                        stay online forever.</p>
+                </div>
+
+                <div class="options">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="allowDownloads">
+                        <label for="allowDownloads">Allow downloads</label>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="allowCopying">
+                        <label for="allowCopying">Allow copying</label>
+                    </div>
+
+                    <div class="input-group">
+                        <input type="checkbox" id="enableViewCap">
+                        <label for="enableViewCap" style="margin-right: 8px;">View limit</label>
+                        <input type="number" id="viewCapInput" placeholder="max views" disabled min="1">
+                    </div>
+
+                    <div class="input-group">
+                        <input type="checkbox" id="enableTimeCap">
+                        <label for="enableTimeCap" style="margin-right: 8px;">Expiration time</label>
+                        <input type="datetime-local" id="timeCapInput" disabled>
+                    </div>
+
+                    <div id="linkDisplay" class="link-display">
+                        <div class="success-message">✓ File uploaded successfully!</div>
+                        <span class="link-label">Shareable link</span>
+                        <div class="link-container">
+                            <input type="text" id="shareableLink" class="link-input" readonly>
+                            <button id="copyBtn" class="copy-btn">Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-links">
+            <a href="#">Why We Built This</a>
+            <a href="#">FAQ</a>
+            <a href="#">Security</a>
+            <a href="#">Legal</a>
+            <a href="#">Twitter</a>
+        </div>
+        <div style="color: #7a85c1;">Protected by encryption</div>
+    </footer>
+
+    <input type="file" id="fileInput">
+
+    <script>
+        // Disable right-click
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' ||
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+                (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+            }
+        });
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const linkDisplay = document.getElementById('linkDisplay');
+        const shareableLink = document.getElementById('shareableLink');
+        const copyBtn = document.getElementById('copyBtn');
+        const enableViewCap = document.getElementById('enableViewCap');
+        const viewCapInput = document.getElementById('viewCapInput');
+        const enableTimeCap = document.getElementById('enableTimeCap');
+        const timeCapInput = document.getElementById('timeCapInput');
+
+        // Set default time to 7 days from now
+        const defaultTime = new Date();
+        defaultTime.setDate(defaultTime.getDate() + 7);
+        timeCapInput.value = defaultTime.toISOString().slice(0, 16);
+
+        // Enable/disable inputs
+        enableViewCap.addEventListener('change', () => {
+            viewCapInput.disabled = !enableViewCap.checked;
+        });
+
+        enableTimeCap.addEventListener('change', () => {
+            timeCapInput.disabled = !enableTimeCap.checked;
+        });
+
+        // Upload area click
+        uploadArea.addEventListener('click', () => {
+            if (!uploadArea.classList.contains('uploading')) {
+                fileInput.click();
+            }
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Handle file upload
+        function handleFileUpload(file) {
+            const validExtensions = ['.pdf', '.ipynb'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+            if (!validExtensions.includes(fileExtension)) {
+                alert('Please upload only PDF or IPYNB files');
+                return;
+            }
+
+            uploadArea.classList.add('uploading');
+            progressBar.style.display = 'block';
+            linkDisplay.classList.remove('show');
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 100) progress = 100;
+                progressFill.style.width = progress + '%';
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        completeUpload(file);
+                    }, 500);
+                }
+            }, 200);
+        }
+
+        function completeUpload(file) {
+            const token = generateToken();
+            const url = `${window.location.origin}/view/${token}`;
+
+            shareableLink.value = url;
+            linkDisplay.classList.add('show');
+
+            setTimeout(() => {
+                uploadArea.classList.remove('uploading');
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+            }, 500);
+
+            console.log('Upload config:', {
+                filename: file.name,
+                allowDownloads: document.getElementById('allowDownloads').checked,
+                allowCopying: document.getElementById('allowCopying').checked,
+                maxViews: enableViewCap.checked ? viewCapInput.value : null,
+                expiresAt: enableTimeCap.checked ? timeCapInput.value : null
+            });
+        }
+
+        function generateToken() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(shareableLink.value);
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                shareableLink.select();
+                document.execCommand('copy');
+                copyBtn.textContent = 'Copied!';
+            }
+        });
+    </script>
+</body>
+
+</html>
