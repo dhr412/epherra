@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epherra - Secure, Ephemeral File Sharing</title>
+    <title>Epherra - Secure File Sharing</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,8 @@
         /* Full-screen layout with cosmic gradient background */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-            background: linear-gradient(135deg, #0f1b4d 0%, #1a2a80 25%, #3b38a0 50%, #5d4db8 75%, #7a85c1 100%);
+            /* Updated gradient to new purple-to-teal palette */
+            background: linear-gradient(135deg, #473472 0%, #53629E 25%, #87BAC3 50%, #87BAC3 75%, #D6F4ED 100%);
             background-attachment: fixed;
             min-height: 100vh;
             display: flex;
@@ -34,25 +35,28 @@
             justify-content: space-between;
             align-items: center;
             padding: 24px 48px;
-            background: rgba(15, 27, 77, 0.4);
+            /* Updated header background to match new palette */
+            background: rgba(71, 52, 114, 0.4);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(122, 133, 193, 0.2);
+            border-bottom: 1px solid rgba(135, 186, 195, 0.2);
         }
 
         .logo {
             font-size: 28px;
             font-weight: 700;
-            background: linear-gradient(135deg, #D6F4ED 30%, #B2B0E8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            /* background: linear-gradient(135deg, #D6F4ED 30%, #87BAC3 100%); */
+            /* -webkit-background-clip: text; */
+            /* -webkit-text-fill-color: transparent; */
+            /* background-clip: text; */
+            color: #D6F4ED;
         }
 
         .header-button {
             padding: 10px 20px;
-            border: 1px solid rgba(122, 133, 193, 0.3);
-            background: rgba(122, 133, 193, 0.1);
-            color: #b2b0e8;
+            /* Updated button colors to new palette */
+            border: 1px solid rgba(135, 186, 195, 0.3);
+            background: rgba(135, 186, 195, 0.1);
+            color: #87BAC3;
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
@@ -60,8 +64,8 @@
         }
 
         .header-button:hover {
-            background: rgba(122, 133, 193, 0.2);
-            border-color: rgba(122, 133, 193, 0.5);
+            background: rgba(135, 186, 195, 0.2);
+            border-color: rgba(135, 186, 195, 0.5);
         }
 
         /* Main content area with full-screen coverage */
@@ -85,11 +89,12 @@
 
         /* Modern upload area with glassmorphism */
         #uploadArea {
-            border: 2px dashed rgba(122, 133, 193, 0.5) !important;
+            /* Updated border and background to new palette */
+            border: 2px dashed rgba(135, 186, 195, 0.5) !important;
             border-radius: 20px;
             padding: 80px 40px !important;
             text-align: center;
-            background: rgba(26, 42, 128, 0.3) !important;
+            background: rgba(71, 52, 114, 0.3) !important;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
             cursor: pointer;
@@ -104,14 +109,14 @@
         }
 
         #uploadArea:hover {
-            border-color: rgba(122, 133, 193, 0.8);
-            background: rgba(26, 42, 128, 0.5) !important;
+            border-color: rgba(135, 186, 195, 0.8);
+            background: rgba(71, 52, 114, 0.5) !important;
             transform: translateY(-2px);
         }
 
         #uploadArea.dragover {
-            border-color: rgba(122, 133, 193, 1);
-            background: rgba(26, 42, 128, 0.7) !important;
+            border-color: rgba(135, 186, 195, 1);
+            background: rgba(71, 52, 114, 0.7) !important;
         }
 
         #uploadArea::before {
@@ -121,7 +126,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, rgba(122, 133, 193, 0.1) 0%, transparent 100%);
+            /* Updated gradient overlay to new palette */
+            background: linear-gradient(135deg, rgba(135, 186, 195, 0.1) 0%, transparent 100%);
             pointer-events: none;
         }
 
@@ -152,7 +158,8 @@
         .progress-bar {
             width: 100%;
             height: 6px;
-            background: rgba(122, 133, 193, 0.2);
+            /* Updated progress bar background */
+            background: rgba(135, 186, 195, 0.2);
             border-radius: 3px;
             margin-top: 20px !important;
             overflow: hidden;
@@ -162,7 +169,8 @@
 
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #7a85c1, #b2b0e8);
+            /* Updated progress fill gradient */
+            background: linear-gradient(90deg, #87BAC3, #D6F4ED);
             width: 0%;
             transition: width 0.3s;
         }
@@ -193,9 +201,10 @@
 
         /* Options section with glassmorphism styling */
         .options {
-            background: rgba(26, 42, 128, 0.3) !important;
+            /* Updated options background and border */
+            background: rgba(71, 52, 114, 0.3) !important;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(122, 133, 193, 0.2) !important;
+            border: 1px solid rgba(135, 186, 195, 0.2) !important;
             border-radius: 12px !important;
             padding: 24px !important;
             margin-bottom: 0 !important;
@@ -206,7 +215,8 @@
             display: block;
             font-size: 12px;
             font-weight: 700;
-            color: #b2b0e8;
+            /* Updated text color */
+            color: #87BAC3;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 20px;
@@ -223,7 +233,8 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
-            accent-color: #7a85c1;
+            /* Updated checkbox accent color */
+            accent-color: #87BAC3;
         }
 
         .checkbox-group label {
@@ -244,7 +255,8 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
-            accent-color: #7a85c1;
+            /* Updated checkbox accent color */
+            accent-color: #87BAC3;
         }
 
         .input-group label {
@@ -256,10 +268,11 @@
         .input-group input[type="number"],
         .input-group input[type="datetime-local"] {
             padding: 8px 12px !important;
-            border: 1px solid rgba(122, 133, 193, 0.3) !important;
+            /* Updated input border and background */
+            border: 1px solid rgba(135, 186, 195, 0.3) !important;
             border-radius: 6px !important;
             font-size: 14px;
-            background: rgba(26, 42, 128, 0.5) !important;
+            background: rgba(71, 52, 114, 0.5) !important;
             color: #D6F4ED !important;
             transition: all 0.3s ease;
             width: auto;
@@ -268,13 +281,13 @@
         .input-group input[type="number"]:focus,
         .input-group input[type="datetime-local"]:focus {
             outline: none;
-            border-color: rgba(122, 133, 193, 0.6);
-            background: rgba(26, 42, 128, 0.7) !important;
+            border-color: rgba(135, 186, 195, 0.6);
+            background: rgba(71, 52, 114, 0.7) !important;
         }
 
         .input-group input[type="number"]:disabled,
         .input-group input[type="datetime-local"]:disabled {
-            background: rgba(26, 42, 128, 0.2) !important;
+            background: rgba(71, 52, 114, 0.2) !important;
             cursor: not-allowed;
             opacity: 0.5;
         }
@@ -284,8 +297,9 @@
             display: none;
             margin-top: 30px;
             padding: 20px;
-            background: rgba(26, 42, 128, 0.3) !important;
-            border: 1px solid rgba(122, 133, 193, 0.3) !important;
+            /* Updated link display background and border */
+            background: rgba(71, 52, 114, 0.3) !important;
+            border: 1px solid rgba(135, 186, 195, 0.3) !important;
             border-radius: 10px !important;
             backdrop-filter: blur(10px);
             animation: slideUp 0.3s ease;
@@ -334,39 +348,46 @@
         .link-input {
             flex: 1;
             padding: 10px 14px;
-            border: 1px solid rgba(122, 133, 193, 0.3);
+            /* Updated link input border and background */
+            border: 1px solid rgba(135, 186, 195, 0.3);
             border-radius: 6px;
             font-size: 14px;
-            background: rgba(15, 27, 77, 0.5);
+            background: rgba(71, 52, 114, 0.5);
             color: #D6F4ED;
         }
 
         .link-input::selection {
-            background: rgba(122, 133, 193, 0.3);
+            background: rgba(135, 186, 195, 0.3);
         }
 
         /* Modern copy button with gradient */
         .copy-btn {
             padding: 10px 20px !important;
-            background: linear-gradient(135deg, #7a85c1 0%, #b2b0e8 100%) !important;
-            color: #0f1b4d !important;
+            /* Updated copy button gradient and text color */
+            background: linear-gradient(135deg, #87BAC3 0%, #D6F4ED 100%) !important;
+            color: #473472 !important;
             border: none !important;
             border-radius: 6px !important;
             cursor: pointer;
             font-size: 14px !important;
             font-weight: 600 !important;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(122, 133, 193, 0.2);
+            box-shadow: 0 2px 8px rgba(135, 186, 195, 0.2);
             white-space: nowrap;
         }
 
         .copy-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(122, 133, 193, 0.3);
+            box-shadow: 0 4px 12px rgba(135, 186, 195, 0.3);
         }
 
         .copy-btn.copied {
             background: #4CAF50 !important;
+        }
+
+        /* Footer styling */
+        footer {
+            display: none;
         }
 
         input[type="file"] {
@@ -392,6 +413,17 @@
                 font-size: 32px;
             }
 
+            footer {
+                padding: 20px 32px;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .footer-links {
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+
             #uploadArea {
                 min-height: 300px;
             }
@@ -414,6 +446,10 @@
                 padding: 40px 20px !important;
             }
 
+            .footer-links {
+                flex-direction: column;
+                gap: 12px;
+            }
         }
     </style>
 </head>
@@ -451,7 +487,7 @@
             <!-- Info and options section on the right -->
             <div class="info-section">
                 <div>
-                    <h1>Simple, private file sharing</h1>
+                    <h1>Simple, ephemeral file sharing</h1>
                     <p>Epherra lets you share files with <strong>end-to-end encryption</strong> and a link that
                         automatically expires. So you can keep what you share private and make sure your stuff doesn't
                         stay online forever.</p>
@@ -492,6 +528,17 @@
             </div>
         </div>
     </main>
+
+    <footer>
+        <div class="footer-links">
+            <a href="#">Why We Built This</a>
+            <a href="#">FAQ</a>
+            <a href="#">Security</a>
+            <a href="#">Legal</a>
+            <a href="#">Twitter</a>
+        </div>
+        <div style="color: #7a85c1;">Protected by encryption</div>
+    </footer>
 
     <input type="file" id="fileInput">
 
