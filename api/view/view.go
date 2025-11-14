@@ -1,0 +1,109 @@
+package handler
+
+import (
+	"context"
+	"encoding/base64"
+	"epherra-api/shared"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+)
+
+func setCORSHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
+
+func Handler(w http.ResponseWriter, r *http.Request) {
+	setCORSHeaders(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	collection, bucket, err := shared.GetDB()
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		http.Error(w, "Token required", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	var metadata shared.FileMetadata
+	err = collection.FindOne(ctx, bson.M{"token": token}).Decode(&metadata)
+	if err != nil {
+		http.Error(w, "File not found or expired", http.StatusNotFound)
+		return
+	}
+
+	if metadata.Status != "active" {
+		http.Error(w, "File has expired", http.StatusGone)
+		return
+	}
+
+	if time.Now().After(metadata.ExpiresAt) {
+		collection.UpdateOne(ctx, bson.M{"token": token}, bson.M{"$set": bson.M{"status": "expired"}})
+		http.Error(w, "File has expired", http.StatusGone)
+		return
+	}
+
+	if metadata.MaxViews != nil && metadata.CurrentViews >= *metadata.MaxViews {
+		collection.UpdateOne(ctx, bson.M{"token": token}, bson.M{"$set": bson.M{"status": "expired"}})
+		http.Error(w, "View limit reached", http.StatusGone)
+		return
+	}
+
+	update := bson.M{"$inc": bson.M{"currentViews": 1}}
+	if metadata.MaxViews != nil && metadata.CurrentViews+1 >= *metadata.MaxViews {
+		update = bson.M{
+			"$inc": bson.M{"currentViews": 1},
+			"$set": bson.M{"status": "expired"},
+		}
+	}
+	collection.UpdateOne(ctx, bson.M{"token": token}, update)
+
+	w.Header().Set("Content-Type", metadata.FileType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, metadata.Filename))
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("X-Allow-Downloads", fmt.Sprintf("%t", metadata.AllowDownloads))
+	w.Header().Set("X-Allow-Copying", fmt.Sprintf("%t", metadata.AllowCopying))
+
+	if metadata.FileData != "" {
+		fileData, err := base64.StdEncoding.DecodeString(metadata.FileData)
+		if err != nil {
+			http.Error(w, "Invalid file data", http.StatusInternalServerError)
+			return
+		}
+		w.Write(fileData)
+		return
+	}
+
+	downloadStream, err := bucket.OpenDownloadStream(ctx, metadata.FileID)
+	if err != nil {
+		http.Error(w, "Failed to retrieve file", http.StatusInternalServerError)
+		return
+	}
+	defer downloadStream.Close()
+
+	if _, err := io.Copy(w, downloadStream); err != nil {
+		http.Error(w, "Failed to stream file", http.StatusInternalServerError)
+		return
+	}
+}
