@@ -201,6 +201,58 @@
             display: none;
         }
 
+        body.fullscreen-active {
+            overflow: auto;
+        }
+
+        body.fullscreen-active header,
+        body.fullscreen-active .container,
+        body.fullscreen-active .info-section {
+            display: none;
+        }
+
+        body.fullscreen-active main {
+            padding: 0;
+            align-items: flex-start;
+            justify-content: flex-start;
+        }
+
+        body.fullscreen-active #viewerArea {
+            width: 100vw;
+            height: 100vh;
+            min-height: 100vh;
+            border-radius: 0;
+            padding: 20px;
+            border: none;
+            background: #222;
+        }
+
+        body.fullscreen-active #viewer {
+            height: calc(100vh - 40px);
+            min-height: unset;
+        }
+
+        #viewerArea:fullscreen {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            border: none;
+            background: #222;
+            padding: 20px;
+        }
+
+        #viewerArea:fullscreen #viewer {
+            height: calc(100vh - 80px);
+            min-height: unset;
+        }
+
+        #viewerArea:fullscreen img,
+        #viewerArea:fullscreen embed,
+        #viewerArea:fullscreen video {
+            max-height: calc(100vh - 80px);
+            object-fit: contain;
+        }
+
         @media (max-width: 1024px) {
             .container {
                 grid-template-columns: 1fr;
@@ -266,6 +318,7 @@
                     <span id="loadingIcon" style="font-size: 48px; margin-bottom: 20px;">⏳</span>
                     <div id="viewer"></div>
                     <button id="downloadBtn" class="download-btn hidden">Download</button>
+                    <button id="fullscreenBtn" class="download-btn hidden">Fullscreen</button>
                 </div>
             </div>
 
@@ -300,6 +353,7 @@
         const fileDesc = document.getElementById('fileDesc');
         const fileInfo = document.getElementById('fileInfo');
         const downloadBtn = document.getElementById('downloadBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
 
         if (!token) {
             viewer.innerHTML = '<div class="error-message">Invalid link</div>';
@@ -308,6 +362,35 @@
 
         let allowDownloads;
         let allowCopying;
+
+        fullscreenBtn.addEventListener('click', () => {
+            const viewerArea = document.getElementById('viewerArea');
+
+            if (!document.fullscreenElement) {
+                viewerArea.requestFullscreen().then(() => {
+                    fullscreenBtn.textContent = 'Exit Fullscreen';
+                }).catch(err => {
+                    console.error('Failed to enter fullscreen:', err);
+                    document.body.classList.add('fullscreen-active');
+                    fullscreenBtn.textContent = 'Exit Fullscreen';
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                    fullscreenBtn.textContent = 'Fullscreen';
+                }).catch(err => {
+                    console.error('Failed to exit fullscreen:', err);
+                    document.body.classList.remove('fullscreen-active');
+                    fullscreenBtn.textContent = 'Fullscreen';
+                });
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                fullscreenBtn.textContent = 'Fullscreen';
+                document.body.classList.remove('fullscreen-active');
+            }
+        });
 
         fetch(`/view-file/${token}`)
             .then(response => {
@@ -327,8 +410,10 @@
                 `;
 
                 if (!allowDownloads) {
+                    downloadBtn.disabled = true;
                     downloadBtn.classList.add('hidden');
                 }
+                fullscreenBtn.classList.remove('hidden');
 
                 return response.blob();
             })
@@ -339,43 +424,104 @@
 
                 if (type.startsWith('image/')) {
                     viewer.innerHTML = `<img src="${url}" alt="Image">`;
+                    if (!allowDownloads) URL.revokeObjectURL(url);
                 } else if (type === 'application/pdf') {
                     viewer.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px">`;
+                    if (!allowDownloads) URL.revokeObjectURL(url);
                 } else if (type.startsWith('video/')) {
                     viewer.innerHTML = `<video src="${url}" controls width="100%" height="auto"></video>`;
+                    if (!allowDownloads) URL.revokeObjectURL(url);
                 } else if (type.startsWith('text/') || type.includes('json') || type.includes('ipynb')) {
                     return fetch(url).then(r => r.text()).then(text => {
                         const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         viewer.innerHTML = `<pre>${escaped}</pre>`;
+                        const copyBtn = document.createElement('button');
+                        copyBtn.textContent = 'Copy Content';
+                        copyBtn.className = 'download-btn';
                         if (allowCopying) {
-                            const copyBtn = document.createElement('button');
-                            copyBtn.textContent = 'Copy Content';
-                            copyBtn.className = 'download-btn';
                             copyBtn.onclick = () => {
                                 navigator.clipboard.writeText(text);
                                 copyBtn.textContent = 'Copied!';
                                 setTimeout(() => copyBtn.textContent = 'Copy Content', 2000);
                             };
-                            viewer.appendChild(copyBtn);
+                        } else {
+                            copyBtn.disabled = true;
+                            copyBtn.classList.add('hidden');
                         }
+                        viewer.appendChild(copyBtn);
+                        if (!allowDownloads) URL.revokeObjectURL(url);
                     });
                 } else {
                     viewer.innerHTML = '<div class="error-message">Unsupported file type</div>';
+                    URL.revokeObjectURL(url);
                     return;
                 }
 
-                downloadBtn.onclick = () => {
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileTitle.textContent;
-                    a.click();
-                };
-                if (allowDownloads) downloadBtn.classList.remove('hidden');
+                if (allowDownloads) {
+                    downloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileTitle.textContent;
+                        a.click();
+                    };
+                    downloadBtn.classList.remove('hidden');
+                }
             })
             .catch(error => {
                 loadingIcon.style.display = 'none';
                 viewer.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
             });
+    </script>
+
+    <script>
+        const devtools = {
+            isOpen: false,
+            orientation: null,
+        };
+
+        const threshold = 160;
+
+        const emitEvent = (isOpen, orientation) => {
+            window.dispatchEvent(
+                new CustomEvent('devtoolschange', {
+                    detail: {
+                        isOpen,
+                        orientation,
+                    },
+                })
+            );
+        };
+
+        const main = setInterval(() => {
+            const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+            const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+            const orientation = widthThreshold ? 'vertical' : 'horizontal';
+
+            if (
+                !(heightThreshold && widthThreshold) &&
+                ((window.Firebug && window.Firebug.chrome && window.Firebug.chrome.isInitialized) || widthThreshold || heightThreshold)
+            ) {
+                if (!devtools.isOpen || devtools.orientation !== orientation) {
+                    emitEvent(true, orientation);
+                }
+
+                devtools.isOpen = true;
+                devtools.orientation = orientation;
+            } else {
+                if (devtools.isOpen) {
+                    emitEvent(false, null);
+                }
+
+                devtools.isOpen = false;
+                devtools.orientation = null;
+            }
+        }, 500);
+
+        window.addEventListener('devtoolschange', (e) => {
+            if (e.detail.isOpen) {
+                document.body.innerHTML = '<div style="font-size: 24px; text-align: center; padding: 50px; color: #D6F4ED;">Developer Tools are not allowed on this page.</div>';
+            }
+        });
     </script>
 </body>
 
