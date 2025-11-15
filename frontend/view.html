@@ -293,7 +293,6 @@
             }
         });
 
-        const API_BASE = 'http://localhost:8080';
         const token = window.location.pathname.split('/').pop();
         const viewer = document.getElementById('viewer');
         const loadingIcon = document.getElementById('loadingIcon');
@@ -304,18 +303,21 @@
 
         if (!token) {
             viewer.innerHTML = '<div class="error-message">Invalid link</div>';
-            return;
+            throw new Error('Invalid token');
         }
 
-        fetch(`${API_BASE}/api/view/${token}`, {method: 'HEAD'}) // Use HEAD for metadata only
+        let allowDownloads;
+        let allowCopying;
+
+        fetch(`/view-file/${token}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('File not found or expired');
                 }
                 const contentType = response.headers.get('Content-Type');
                 const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'file';
-                const allowDownloads = response.headers.get('X-Allow-Downloads') === 'true';
-                const allowCopying = response.headers.get('X-Allow-Copying') === 'true';
+                allowDownloads = response.headers.get('X-Allow-Downloads') === 'true';
+                allowCopying = response.headers.get('X-Allow-Copying') === 'true';
 
                 fileTitle.textContent = filename;
                 fileInfo.innerHTML = `
@@ -328,9 +330,8 @@
                     downloadBtn.classList.add('hidden');
                 }
 
-                return fetch(`${API_BASE}/api/view/${token}`);
+                return response.blob();
             })
-            .then(response => response.blob())
             .then(blob => {
                 loadingIcon.style.display = 'none';
                 const url = URL.createObjectURL(blob);

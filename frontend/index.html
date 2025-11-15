@@ -460,7 +460,15 @@
                     <div class="input-group">
                         <input type="checkbox" id="enableTimeCap">
                         <label for="enableTimeCap" style="margin-right: 8px;">Expiration time</label>
-                        <input type="datetime-local" id="timeCapInput" disabled>
+                        <select id="timeCapInput" disabled>
+                            <option value="1h">1 hour</option>
+                            <option value="6h">6 hours</option>
+                            <option value="12h">12 hours</option>
+                            <option value="1d">1 day</option>
+                            <option value="3d" selected>3 days</option>
+                            <option value="5d">5 days</option>
+                            <option value="7d">7 days</option>
+                        </select>
                     </div>
 
                     <div id="linkDisplay" class="link-display">
@@ -479,10 +487,8 @@
     <input type="file" id="fileInput">
 
     <script>
-        // Disable right-click
         document.addEventListener('contextmenu', e => e.preventDefault());
 
-        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
         document.addEventListener('keydown', e => {
             if (e.key === 'F12' ||
                 (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
@@ -491,7 +497,6 @@
             }
         });
 
-        const API_BASE = 'http://localhost:8080';
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const progressBar = document.getElementById('progressBar');
@@ -506,12 +511,8 @@
         const allowDownloads = document.getElementById('allowDownloads');
         const allowCopying = document.getElementById('allowCopying');
 
-        // Set default time to 7 days from now
-        const defaultTime = new Date();
-        defaultTime.setDate(defaultTime.getDate() + 7);
-        timeCapInput.value = defaultTime.toISOString().slice(0, 16);
+        viewCapInput.value = 1;
 
-        // Enable/disable inputs
         enableViewCap.addEventListener('change', () => {
             viewCapInput.disabled = !enableViewCap.checked;
         });
@@ -555,7 +556,6 @@
             }
         });
 
-        // File input change
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 handleFileUpload(e.target.files[0]);
@@ -563,13 +563,34 @@
         });
 
         function handleFileUpload(file) {
-            const validExtensions = ['.pdf', '.ipynb'];
+            if (file.size > 20 * 1024 * 1024) {
+                alert('File is too large. Max size is 20MB.');
+                return;
+            }
+            const validExtensions = [
+                '.pdf', '.ipynb',
+
+                // Text & markup
+                '.txt', '.md', '.html', '.css', '.latex',
+
+                // Programming languages (browser-displayable as text)
+                '.js', '.jsx', '.ts', '.tsx', '.py', '.c', '.cpp', '.java', '.go', '.rb', '.php', '.sh',
+                '.ts', '.rs', '.r', '.ps1',
+
+                // Images (natively viewable)
+                '.png', '.jpeg', '.jpg', '.gif', '.webp', '.svg',
+
+                // Videos (natively playable)
+                '.mp4', '.webm', '.ogg'
+            ];
+
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
 
             if (!validExtensions.includes(fileExtension)) {
-                alert('Please upload only PDF or IPYNB files');
+                alert('Please upload only valid files (PDF, IPYNB, images, videos, or text files)');
                 return;
             }
+
 
             uploadArea.classList.add('uploading');
             progressBar.style.display = 'block';
@@ -578,6 +599,21 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 const base64Data = e.target.result.split(',')[1];
+
+                let expiresAt = null;
+                if (enableTimeCap.checked) {
+                    const selectedDuration = timeCapInput.value;
+                    let durationInHours = 0;
+                    if (selectedDuration.endsWith('h')) {
+                        durationInHours = parseInt(selectedDuration.slice(0, -1));
+                    } else if (selectedDuration.endsWith('d')) {
+                        durationInHours = parseInt(selectedDuration.slice(0, -1)) * 24;
+                    }
+                    const expiryDate = new Date();
+                    expiryDate.setHours(expiryDate.getHours() + durationInHours);
+                    expiresAt = expiryDate.toISOString();
+                }
+
                 const uploadData = {
                     filename: file.name,
                     fileType: file.type || 'application/octet-stream',
@@ -585,7 +621,7 @@
                     allowDownloads: allowDownloads.checked,
                     allowCopying: allowCopying.checked,
                     maxViews: enableViewCap.checked ? parseInt(viewCapInput.value) : null,
-                    expiresAt: enableTimeCap.checked ? new Date(timeCapInput.value).toISOString() : null,
+                    expiresAt: expiresAt,
                 };
 
                 let progress = 0;
@@ -595,7 +631,7 @@
                     progressFill.style.width = progress + '%';
                 }, 100);
 
-                fetch(`${API_BASE}/api/upload`, {
+                fetch('/upload-file', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(uploadData),
