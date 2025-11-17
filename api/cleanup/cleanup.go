@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			gridfsDeletedCount, inlineDeletedCount, metadataDeletedCount),
 	}
 
-	fmt.Printf("Cleanup completed at %s: GridFS=%d, Inline=%d, Metadata=%d\n",
+	fmt.Printf("Cleanup completed at %s: GridFS: %d, Inline: %d, Metadata: %d\n",
 		time.Now().Format(time.RFC3339), gridfsDeletedCount, inlineDeletedCount, metadataDeletedCount)
 
 	json.NewEncoder(w).Encode(response)
