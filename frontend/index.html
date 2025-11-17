@@ -269,6 +269,16 @@
             opacity: 0.5;
         }
 
+        .input-group input[type="password"] {
+            padding: 8px 12px !important;
+            border: 1px solid rgba(135, 186, 195, 0.3) !important;
+            border-radius: 6px !important;
+            font-size: 14px;
+            background: rgba(71, 52, 114, 0.5) !important;
+            color: #D6F4ED !important;
+            width: 200px;
+        }
+
         .link-display {
             display: none;
             margin-top: 30px;
@@ -471,6 +481,12 @@
                         </select>
                     </div>
 
+                    <div class="input-group">
+                        <input type="checkbox" id="enablePassword">
+                        <label for="enablePassword" style="margin-right: 8px;">Password protect</label>
+                        <input type="password" id="passwordInput" placeholder="password" disabled>
+                    </div>
+
                     <div id="linkDisplay" class="link-display">
                         <div class="success-message">✓ File uploaded successfully!</div>
                         <span class="link-label">Shareable link</span>
@@ -510,6 +526,8 @@
         const timeCapInput = document.getElementById('timeCapInput');
         const allowDownloads = document.getElementById('allowDownloads');
         const allowCopying = document.getElementById('allowCopying');
+        const enablePassword = document.getElementById('enablePassword');
+        const passwordInput = document.getElementById('passwordInput');
 
         viewCapInput.value = 1;
 
@@ -562,6 +580,50 @@
             }
         });
 
+        enablePassword.addEventListener('change', () => {
+            passwordInput.disabled = !enablePassword.checked;
+        });
+
+        async function deriveKey(password, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits', 'deriveKey']
+            );
+            return crypto.subtle.deriveKey(
+                {name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256'},
+                keyMaterial,
+                {name: 'AES-GCM', length: 256},
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function encryptFile(fileData, password) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await deriveKey(password, salt);
+
+            const encrypted = await crypto.subtle.encrypt(
+                {name: 'AES-GCM', iv},
+                key,
+                fileData
+            );
+
+            const result = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+            result.set(salt, 0);
+            result.set(iv, salt.length);
+            result.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+            return result;
+        }
+
+        async function hashPassword(password) {
+            const enc = new TextEncoder();
+            const hash = await crypto.subtle.digest('SHA-256', enc.encode(password));
+            return Array.from(new Uint8Array(hash))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         function handleFileUpload(file) {
             if (file.size > 20 * 1024 * 1024) {
                 alert('File is too large. Max size is 20MB.');
@@ -591,14 +653,28 @@
                 return;
             }
 
+            const password = enablePassword.checked ? passwordInput.value : null;
+            if (enablePassword.checked && !password) {
+                alert('Please enter a password');
+                return;
+            }
 
             uploadArea.classList.add('uploading');
             progressBar.style.display = 'block';
             linkDisplay.classList.remove('show');
 
             const reader = new FileReader();
-            reader.onload = function (e) {
-                const base64Data = e.target.result.split(',')[1];
+            reader.onload = async function (e) {
+                let fileData = new Uint8Array(e.target.result);
+                let base64Data;
+                let passwordHash = null;
+
+                if (password) {
+                    fileData = await encryptFile(fileData, password);
+                    passwordHash = await hashPassword(password);
+                }
+
+                base64Data = btoa(String.fromCharCode(...fileData));
 
                 let expiresAt = null;
                 if (enableTimeCap.checked) {
@@ -622,6 +698,7 @@
                     allowCopying: allowCopying.checked,
                     maxViews: enableViewCap.checked ? parseInt(viewCapInput.value) : null,
                     expiresAt: expiresAt,
+                    passwordHash: passwordHash
                 };
 
                 let progress = 0;
@@ -663,7 +740,7 @@
                         alert('Upload failed: ' + error.message);
                     });
             };
-            reader.readAsDataURL(file);
+            reader.readAsArrayBuffer(file);
         }
     </script>
 </body>

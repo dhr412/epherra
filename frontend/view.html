@@ -311,6 +311,17 @@
         </a>
     </header>
 
+    <div id="passwordModal"
+        style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000; display:flex; align-items:center; justify-content:center;">
+        <div style="background:#473472; padding:40px; border-radius:12px; max-width:400px;">
+            <h2 style="color:#D6F4ED; margin-bottom:20px;">Password Required</h2>
+            <input type="password" id="filePassword" placeholder="Enter password"
+                style="width:100%; padding:12px; margin-bottom:20px; border-radius:6px; border:1px solid #87BAC3; background:#53629E; color:#D6F4ED; font-size:16px;">
+            <button id="unlockBtn" class="download-btn" style="width:100%;">Unlock</button>
+            <div id="passwordError" style="color:#f44336; margin-top:10px; display:none;">Incorrect password</div>
+        </div>
+    </div>
+
     <main>
         <div class="container">
             <div class="upload-section">
@@ -336,6 +347,43 @@
     </main>
 
     <script>
+        async function hashPassword(password) {
+            const enc = new TextEncoder();
+            const hash = await crypto.subtle.digest('SHA-256', enc.encode(password));
+            return Array.from(new Uint8Array(hash))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function deriveKey(password, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits', 'deriveKey']
+            );
+            return crypto.subtle.deriveKey(
+                {name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256'},
+                keyMaterial,
+                {name: 'AES-GCM', length: 256},
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        async function decryptFile(encryptedData, password) {
+            const data = new Uint8Array(encryptedData);
+            const salt = data.slice(0, 16);
+            const iv = data.slice(16, 28);
+            const encrypted = data.slice(28);
+
+            const key = await deriveKey(password, salt);
+            const decrypted = await crypto.subtle.decrypt(
+                {name: 'AES-GCM', iv},
+                key,
+                encrypted
+            );
+
+            return new Uint8Array(decrypted);
+        }
+
         document.addEventListener('contextmenu', e => e.preventDefault());
 
         document.addEventListener('keydown', e => {
@@ -354,6 +402,10 @@
         const fileInfo = document.getElementById('fileInfo');
         const downloadBtn = document.getElementById('downloadBtn');
         const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const passwordModal = document.getElementById('passwordModal');
+        const filePasswordInput = document.getElementById('filePassword');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const passwordError = document.getElementById('passwordError');
 
         if (!token) {
             viewer.innerHTML = '<div class="error-message">Invalid link</div>';
@@ -362,6 +414,9 @@
 
         let allowDownloads;
         let allowCopying;
+        let filePassword;
+        let currentFileMetadatall;
+        let decryptedBlobUrl;
 
         fullscreenBtn.addEventListener('click', () => {
             const viewerArea = document.getElementById('viewerArea');
@@ -392,79 +447,156 @@
             }
         });
 
-        fetch(`/view-file/${token}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('File not found or expired');
-                }
-                const contentType = response.headers.get('Content-Type');
-                const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'file';
-                allowDownloads = response.headers.get('X-Allow-Downloads') === 'true';
-                allowCopying = response.headers.get('X-Allow-Copying') === 'true';
+        unlockBtn.addEventListener('click', async () => {
+            const pwd = filePasswordInput.value;
+            if (!pwd) {
+                passwordError.textContent = 'Please enter a password';
+                passwordError.style.display = 'block';
+                return;
+            }
 
-                fileTitle.textContent = filename;
-                fileInfo.innerHTML = `
-                    <div class="file-detail"><strong>Type:</strong> ${contentType}</div>
-                    <div class="file-detail"><strong>Downloads:</strong> ${allowDownloads ? 'Allowed' : 'Disabled'}</div>
-                    <div class="file-detail"><strong>Copying:</strong> ${allowCopying ? 'Allowed' : 'Disabled'}</div>
-                `;
+            unlockBtn.disabled = true;
+            unlockBtn.textContent = 'Unlocking...';
+            passwordError.style.display = 'none';
 
-                if (!allowDownloads) {
-                    downloadBtn.disabled = true;
-                    downloadBtn.classList.add('hidden');
-                }
-                fullscreenBtn.classList.remove('hidden');
+            try {
+                const hash = await hashPassword(pwd);
+                const response = await fetch(`/view-file/${token}`, {
+                    headers: {'X-Password-Hash': hash}
+                });
 
-                return response.blob();
-            })
-            .then(blob => {
-                loadingIcon.style.display = 'none';
-                const url = URL.createObjectURL(blob);
-                const type = blob.type;
-
-                if (type.startsWith('image/')) {
-                    viewer.innerHTML = `<img src="${url}" alt="Image">`;
-                    if (!allowDownloads) URL.revokeObjectURL(url);
-                } else if (type === 'application/pdf') {
-                    viewer.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px">`;
-                    if (!allowDownloads) URL.revokeObjectURL(url);
-                } else if (type.startsWith('video/')) {
-                    viewer.innerHTML = `<video src="${url}" controls width="100%" height="auto"></video>`;
-                    if (!allowDownloads) URL.revokeObjectURL(url);
-                } else if (type.startsWith('text/') || type.includes('json') || type.includes('ipynb')) {
-                    return fetch(url).then(r => r.text()).then(text => {
-                        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        viewer.innerHTML = `<pre>${escaped}</pre>`;
-                        const copyBtn = document.createElement('button');
-                        copyBtn.textContent = 'Copy Content';
-                        copyBtn.className = 'download-btn';
-                        if (allowCopying) {
-                            copyBtn.onclick = () => {
-                                navigator.clipboard.writeText(text);
-                                copyBtn.textContent = 'Copied!';
-                                setTimeout(() => copyBtn.textContent = 'Copy Content', 2000);
-                            };
-                        } else {
-                            copyBtn.disabled = true;
-                            copyBtn.classList.add('hidden');
-                        }
-                        viewer.appendChild(copyBtn);
-                        if (!allowDownloads) URL.revokeObjectURL(url);
-                    });
-                } else {
-                    viewer.innerHTML = '<div class="error-message">Unsupported file type</div>';
-                    URL.revokeObjectURL(url);
+                if (response.status === 401) {
+                    passwordError.textContent = 'Incorrect password';
+                    passwordError.style.display = 'block';
+                    unlockBtn.disabled = false;
+                    unlockBtn.textContent = 'Unlock';
                     return;
                 }
 
-                if (allowDownloads) {
-                    downloadBtn.onclick = () => {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = fileTitle.textContent;
-                        a.click();
+                if (!response.ok) {
+                    throw new Error('Failed to retrieve file');
+                }
+
+                filePassword = pwd;
+                passwordModal.style.display = 'none';
+                await displayFile(response);
+            } catch (err) {
+                passwordError.textContent = 'Error: ' + err.message;
+                passwordError.style.display = 'block';
+                unlockBtn.disabled = false;
+                unlockBtn.textContent = 'Unlock';
+            }
+        });
+
+        filePasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                unlockBtn.click();
+            }
+        });
+
+        async function displayFile(response) {
+            const contentType = response.headers.get('Content-Type');
+            const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'file';
+            const isEncrypted = response.headers.get('X-Is-Encrypted') === 'true';
+            allowDownloads = response.headers.get('X-Allow-Downloads') === 'true';
+            allowCopying = response.headers.get('X-Allow-Copying') === 'true';
+
+            fileTitle.textContent = filename;
+            fileInfo.innerHTML = `
+        <div class="file-detail"><strong>Type:</strong> ${contentType}</div>
+        <div class="file-detail"><strong>Downloads:</strong> ${allowDownloads ? 'Allowed' : 'Disabled'}</div>
+        <div class="file-detail"><strong>Copying:</strong> ${allowCopying ? 'Allowed' : 'Disabled'}</div>
+        <div class="file-detail"><strong>Encrypted:</strong> ${isEncrypted ? 'Yes' : 'No'}</div>
+    `;
+
+            if (!allowDownloads) {
+                downloadBtn.disabled = true;
+                downloadBtn.classList.add('hidden');
+            }
+            fullscreenBtn.classList.remove('hidden');
+
+            let blob = await response.blob();
+
+            if (isEncrypted && filePassword) {
+                try {
+                    const arrayBuffer = await blob.arrayBuffer();
+                    const decryptedData = await decryptFile(arrayBuffer, filePassword);
+                    blob = new Blob([decryptedData], {type: contentType});
+                } catch (err) {
+                    loadingIcon.style.display = 'none';
+                    viewer.innerHTML = `<div class="error-message">Decryption failed: ${err.message}</div>`;
+                    return;
+                }
+            }
+
+            loadingIcon.style.display = 'none';
+            const url = URL.createObjectURL(blob);
+            decryptedBlobUrl = url;
+            const type = blob.type || contentType;
+
+            if (type.startsWith('image/')) {
+                viewer.innerHTML = `<img src="${url}" alt="Image">`;
+                if (!allowDownloads) {
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }
+            } else if (type === 'application/pdf') {
+                viewer.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="600px">`;
+                if (!allowDownloads) {
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                }
+            } else if (type.startsWith('video/')) {
+                viewer.innerHTML = `<video src="${url}" controls width="100%" height="auto"></video>`;
+                if (!allowDownloads) {
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }
+            } else if (type.startsWith('text/') || type.includes('json') || type.includes('ipynb')) {
+                const text = await blob.text();
+                const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                viewer.innerHTML = `<pre>${escaped}</pre>`;
+
+                if (allowCopying) {
+                    const copyBtn = document.createElement('button');
+                    copyBtn.textContent = 'Copy Content';
+                    copyBtn.className = 'download-btn';
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(text);
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => copyBtn.textContent = 'Copy Content', 2000);
                     };
-                    downloadBtn.classList.remove('hidden');
+                    viewer.appendChild(copyBtn);
+                }
+
+                if (!allowDownloads) {
+                    URL.revokeObjectURL(url);
+                }
+            } else {
+                viewer.innerHTML = '<div class="error-message">Unsupported file type</div>';
+                URL.revokeObjectURL(url);
+                return;
+            }
+
+            if (allowDownloads) {
+                downloadBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                };
+                downloadBtn.classList.remove('hidden');
+            }
+        }
+
+        fetch(`/view-file/${token}`, {method: 'HEAD'})
+            .then(response => {
+                if (response.status === 401) {
+                    loadingIcon.style.display = 'none';
+                    passwordModal.style.display = 'flex';
+                    fileTitle.textContent = 'Password Protected File';
+                    fileDesc.textContent = 'This file requires a password to view.';
+                } else if (response.ok) {
+                    return fetch(`/view-file/${token}`).then(displayFile);
+                } else {
+                    throw new Error('File not found or expired');
                 }
             })
             .catch(error => {
@@ -519,7 +651,7 @@
 
         window.addEventListener('devtoolschange', (e) => {
             if (e.detail.isOpen) {
-                document.body.innerHTML = '<div style="font-size: 24px; text-align: center; padding: 50px; color: #D6F4ED;">Developer Tools are not allowed on this page.</div>';
+                document.body.innerHTML = '<div style="font-size: 48px; text-align: center; padding: 50px; color: #D6F4ED;">Developer Tools are not allowed on this page.</div>';
             }
         });
     </script>
