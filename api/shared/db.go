@@ -28,6 +28,8 @@ type FileMetadata struct {
 	MaxViews       *int          `bson:"maxViews" json:"maxViews"`
 	CurrentViews   int           `bson:"currentViews" json:"currentViews"`
 	Status         string        `bson:"status" json:"status"`
+	PasswordHash   string        `bson:"passwordHash" json:"-"`
+	IsEncrypted    bool          `bson:"isEncrypted" json:"isEncrypted"`
 }
 
 var (

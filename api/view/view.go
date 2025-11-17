@@ -70,6 +70,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if metadata.IsEncrypted {
+		providedHash := r.Header.Get("X-Password-Hash")
+		if providedHash == "" || providedHash != metadata.PasswordHash {
+			http.Error(w, "Password required", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	update := bson.M{"$inc": bson.M{"currentViews": 1}}
 	if metadata.MaxViews != nil && metadata.CurrentViews+1 >= *metadata.MaxViews {
 		update = bson.M{
@@ -82,6 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", metadata.FileType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, metadata.Filename))
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("X-Is-Encrypted", fmt.Sprintf("%t", metadata.IsEncrypted))
 	w.Header().Set("X-Allow-Downloads", fmt.Sprintf("%t", metadata.AllowDownloads))
 	w.Header().Set("X-Allow-Copying", fmt.Sprintf("%t", metadata.AllowCopying))
 

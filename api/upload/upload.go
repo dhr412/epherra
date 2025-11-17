@@ -24,6 +24,7 @@ type UploadRequest struct {
 	AllowCopying   bool      `json:"allowCopying"`
 	MaxViews       *int      `json:"maxViews"`
 	ExpiresAt      time.Time `json:"expiresAt"`
+	PasswordHash   string    `json:"passwordHash"`
 }
 
 func setCORSHeaders(w http.ResponseWriter) {
@@ -107,6 +108,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if metadata.MaxViews == nil {
 		defaultMaxViews := 1
 		metadata.MaxViews = &defaultMaxViews
+	}
+
+	if req.PasswordHash != "" {
+		metadata.PasswordHash = req.PasswordHash
+		metadata.IsEncrypted = true
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
