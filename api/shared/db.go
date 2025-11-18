@@ -89,4 +89,6 @@ func GetDB() (*mongo.Collection, *mongo.GridFSBucket, error) {
 	return collection, bucket, nil
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {}
+func Handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusTeapot)
+}
