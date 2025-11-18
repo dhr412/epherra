@@ -244,7 +244,8 @@
         }
 
         .input-group input[type="number"],
-        .input-group input[type="datetime-local"] {
+        .input-group input[type="datetime-local"],
+        .input-group select {
             padding: 8px 12px !important;
             border: 1px solid rgba(135, 186, 195, 0.3) !important;
             border-radius: 6px !important;
@@ -256,14 +257,16 @@
         }
 
         .input-group input[type="number"]:focus,
-        .input-group input[type="datetime-local"]:focus {
+        .input-group input[type="datetime-local"]:focus,
+        .input-group select:focus {
             outline: none;
             border-color: rgba(135, 186, 195, 0.6);
             background: rgba(71, 52, 114, 0.7) !important;
         }
 
         .input-group input[type="number"]:disabled,
-        .input-group input[type="datetime-local"]:disabled {
+        .input-group input[type="datetime-local"]:disabled,
+        .input-group select:disabled {
             background: rgba(71, 52, 114, 0.2) !important;
             cursor: not-allowed;
             opacity: 0.5;
@@ -482,9 +485,9 @@
                     </div>
 
                     <div class="input-group">
-                        <input type="checkbox" id="enablePassword">
-                        <label for="enablePassword" style="margin-right: 8px;">Password protect</label>
-                        <input type="password" id="passwordInput" placeholder="password" disabled>
+                        <input type="checkbox" id="enablePassword" checked>
+                        <label for="enablePassword" style="margin-right: 8px;">Password</label>
+                        <input type="password" id="passwordInput" placeholder="Enter password">
                     </div>
 
                     <div id="linkDisplay" class="link-display">
@@ -654,8 +657,8 @@
             }
 
             const password = enablePassword.checked ? passwordInput.value : null;
-            if (enablePassword.checked && !password) {
-                alert('Please enter a password');
+            if ((enablePassword.checked && !password) || !enablePassword.checked) {
+                alert('Your file will not be encrypted and will be readable by anyone if you don\'t enter a valid password.');
                 return;
             }
 
