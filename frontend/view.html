@@ -25,7 +25,7 @@
             display: flex;
             flex-direction: column;
             color: #e8e8f0;
-            overflow: hidden;
+            overflow: auto;
         }
 
         header {
@@ -84,11 +84,7 @@
             text-align: center;
             background: rgba(71, 52, 114, 0.3);
             backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            min-height: 400px;
-            display: flex;
+            overflow: auto;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -117,15 +113,35 @@
             margin: 0 auto;
         }
 
-        #viewer pre {
+        .text-viewer-container {
+            display: flex;
+            font-family: monospace;
             font-size: 14px;
-            line-height: 1.4;
-            padding: 20px;
+            line-height: 1.5;
             background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
-            white-space: pre-wrap;
-            text-align: left;
             overflow: auto;
+            text-align: left;
+            width: 100%;
+            height: 100%;
+        }
+
+        .line-numbers {
+            padding: 20px 10px 20px 20px;
+            color: #87BAC3;
+            text-align: right;
+            border-right: 1px solid rgba(135, 186, 195, 0.2);
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            flex-shrink: 0;
+        }
+
+        .line-content {
+            padding: 20px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            flex-grow: 1;
         }
 
         .info-section {
@@ -394,6 +410,29 @@
             }
         });
 
+        function isTextFile(contentType, filename) {
+            const textMimeTypes = ['text/', 'json', 'ipynb'];
+            const textFileExtensions = [
+                '.txt', '.md', '.log', '.json', '.js', '.ts', '.jsx', '.tsx',
+                '.html', '.css', '.scss', '.less', '.xml', '.yaml', '.yml',
+                '.py', '.rb', '.java', '.c', '.cpp', '.h', '.hpp', '.cs', '.go', '.rs',
+                '.php', '.swift', '.kt', '.sh'
+            ];
+
+            // Check content type
+            if (textMimeTypes.some(mime => contentType.includes(mime))) {
+                return true;
+            }
+
+            // Check file extension
+            const lowerFilename = filename.toLowerCase();
+            if (textFileExtensions.some(ext => lowerFilename.endsWith(ext))) {
+                return true;
+            }
+
+            return false;
+        }
+
         const token = window.location.pathname.split('/').pop();
         const viewer = document.getElementById('viewer');
         const loadingIcon = document.getElementById('loadingIcon');
@@ -549,15 +588,27 @@
                 if (!allowDownloads) {
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
                 }
-            } else if (type.startsWith('text/') || type.includes('json') || type.includes('ipynb')) {
+            } else if (isTextFile(type, filename)) {
                 const text = await blob.text();
                 const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                viewer.innerHTML = `<pre>${escaped}</pre>`;
+                const lines = escaped.split('\n');
+
+                let lineNumbersHtml = '';
+                for (let i = 1; i <= lines.length; i++) {
+                    lineNumbersHtml += `${i}\n`;
+                }
+
+                viewer.innerHTML = `
+                    <div class="text-viewer-container">
+                        <pre class="line-numbers">${lineNumbersHtml}</pre>
+                        <pre class="line-content">${escaped}</pre>
+                    </div>`;
 
                 if (allowCopying) {
                     const copyBtn = document.createElement('button');
                     copyBtn.textContent = 'Copy Content';
                     copyBtn.className = 'download-btn';
+                    copyBtn.style.marginTop = '20px';
                     copyBtn.onclick = () => {
                         navigator.clipboard.writeText(text);
                         copyBtn.textContent = 'Copied!';
@@ -600,6 +651,12 @@
                 }
             })
             .catch(error => {
+                // If the password modal is visible, do not display a separate error message
+                // in the main viewer area, as the user is actively addressing the password prompt.
+                if (passwordModal.style.display === 'flex') {
+                    console.warn("File fetch error suppressed because password modal is active:", error);
+                    return;
+                }
                 loadingIcon.style.display = 'none';
                 viewer.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
             });
