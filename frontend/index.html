@@ -465,15 +465,13 @@
                     </div>
 
                     <div class="input-group">
-                        <input type="checkbox" id="enableViewCap">
-                        <label for="enableViewCap" style="margin-right: 8px;">View limit</label>
-                        <input type="number" id="viewCapInput" placeholder="max views" disabled min="1">
+                        <label for="viewCapInput" style="margin-right: 8px;">View limit</label>
+                        <input type="number" id="viewCapInput" placeholder="max views" min="1">
                     </div>
 
                     <div class="input-group">
-                        <input type="checkbox" id="enableTimeCap">
-                        <label for="enableTimeCap" style="margin-right: 8px;">Expiration time</label>
-                        <select id="timeCapInput" disabled>
+                        <label for="timeCapInput" style="margin-right: 8px;">Expiration time</label>
+                        <select id="timeCapInput">
                             <option value="1h">1 hour</option>
                             <option value="6h">6 hours</option>
                             <option value="12h">12 hours</option>
@@ -523,9 +521,9 @@
         const linkDisplay = document.getElementById('linkDisplay');
         const shareableLink = document.getElementById('shareableLink');
         const copyBtn = document.getElementById('copyBtn');
-        const enableViewCap = document.getElementById('enableViewCap');
+
         const viewCapInput = document.getElementById('viewCapInput');
-        const enableTimeCap = document.getElementById('enableTimeCap');
+
         const timeCapInput = document.getElementById('timeCapInput');
         const allowDownloads = document.getElementById('allowDownloads');
         const allowCopying = document.getElementById('allowCopying');
@@ -534,13 +532,9 @@
 
         viewCapInput.value = 1;
 
-        enableViewCap.addEventListener('change', () => {
-            viewCapInput.disabled = !enableViewCap.checked;
-        });
 
-        enableTimeCap.addEventListener('change', () => {
-            timeCapInput.disabled = !enableTimeCap.checked;
-        });
+
+
 
         copyBtn.addEventListener('click', () => {
             shareableLink.select();
@@ -684,18 +678,16 @@
                 base64Data = btoa(binary);
 
                 let expiresAt = null;
-                if (enableTimeCap.checked) {
-                    const selectedDuration = timeCapInput.value;
-                    let durationInHours = 0;
-                    if (selectedDuration.endsWith('h')) {
-                        durationInHours = parseInt(selectedDuration.slice(0, -1));
-                    } else if (selectedDuration.endsWith('d')) {
-                        durationInHours = parseInt(selectedDuration.slice(0, -1)) * 24;
-                    }
-                    const expiryDate = new Date();
-                    expiryDate.setHours(expiryDate.getHours() + durationInHours);
-                    expiresAt = expiryDate.toISOString();
+                const selectedDuration = timeCapInput.value;
+                let durationInHours = 0;
+                if (selectedDuration.endsWith('h')) {
+                    durationInHours = parseInt(selectedDuration.slice(0, -1));
+                } else if (selectedDuration.endsWith('d')) {
+                    durationInHours = parseInt(selectedDuration.slice(0, -1)) * 24;
                 }
+                const expiryDate = new Date();
+                expiryDate.setHours(expiryDate.getHours() + durationInHours);
+                expiresAt = expiryDate.toISOString();
 
                 const uploadData = {
                     filename: file.name,
@@ -703,7 +695,7 @@
                     fileData: base64Data,
                     allowDownloads: allowDownloads.checked,
                     allowCopying: allowCopying.checked,
-                    maxViews: enableViewCap.checked ? parseInt(viewCapInput.value) : null,
+                    maxViews: parseInt(viewCapInput.value),
                     expiresAt: expiresAt,
                     passwordHash: passwordHash
                 };
