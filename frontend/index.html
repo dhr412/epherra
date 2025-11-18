@@ -437,7 +437,7 @@
             <div class="upload-section">
                 <div id="uploadArea">
                     <span class="upload-icon">📁</span>
-                    <div class="upload-text">Select files to send</div>
+                    <div class="upload-text">Select file to share</div>
                     <div class="upload-subtext">Or drag stuff here</div>
                     <div class="progress-bar" id="progressBar">
                         <div class="progress-fill" id="progressFill"></div>
@@ -652,7 +652,7 @@
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
 
             if (!validExtensions.includes(fileExtension)) {
-                alert('Please upload only valid files (PDF, IPYNB, images, videos, or text files)');
+                alert('Please upload only valid files (PDF, images, videos, IPYNB, or text files)');
                 return;
             }
 
@@ -677,7 +677,11 @@
                     passwordHash = await hashPassword(password);
                 }
 
-                base64Data = btoa(String.fromCharCode(...fileData));
+                let binary = '';
+                for (let i = 0; i < fileData.length; i++) {
+                    binary += String.fromCharCode(fileData[i]);
+                }
+                base64Data = btoa(binary);
 
                 let expiresAt = null;
                 if (enableTimeCap.checked) {
