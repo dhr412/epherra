@@ -15,8 +15,8 @@ import (
 
 func setCORSHeaders(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "https://epherra.vercel.app")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Password-Hash")
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +27,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != "GET" {
+	if r.Method != "GET" && r.Method != "HEAD" {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -77,6 +77,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Password required", http.StatusUnauthorized)
 			return
 		}
+	}
+
+	if r.Method == "HEAD" {
+		w.Header().Set("Content-Type", metadata.FileType)
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="%s"`, metadata.Filename))
+		w.Header().Set("X-Is-Encrypted", fmt.Sprintf("%t", metadata.IsEncrypted))
+		w.Header().Set("X-Allow-Downloads", fmt.Sprintf("%t", metadata.AllowDownloads))
+		w.Header().Set("X-Allow-Copying", fmt.Sprintf("%t", metadata.AllowCopying))
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
 	var fileBytes []byte

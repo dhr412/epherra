@@ -70,7 +70,7 @@
 
         .container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             gap: 64px;
             max-width: 1400px;
             width: 100%;
@@ -750,7 +750,9 @@
                 } else if (response.ok) {
                     return fetch(`/view-file/${token}`).then(displayFile);
                 } else {
-                    throw new Error('File not found or expired');
+                    if (response.status === 410) throw new Error('File has expired');
+                    if (response.status === 404) throw new Error('File not found');
+                    throw new Error('File unavailable');
                 }
             })
             .catch(error => {
