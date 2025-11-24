@@ -689,9 +689,43 @@
                 expiryDate.setHours(expiryDate.getHours() + durationInHours);
                 expiresAt = expiryDate.toISOString();
 
+                const mimeTypeMap = {
+                    '.pdf': 'application/pdf',
+                    '.ipynb': 'application/x-ipynb+json',
+                    '.txt': 'text/plain',
+                    '.md': 'text/markdown',
+                    '.html': 'text/html',
+                    '.css': 'text/css',
+                    '.latex': 'text/x-latex',
+                    '.js': 'text/javascript',
+                    '.jsx': 'text/x-jsx',
+                    '.ts': 'text/x-typescript',
+                    '.tsx': 'text/x-tsx',
+                    '.py': 'text/x-python',
+                    '.c': 'text/x-csrc',
+                    '.cpp': 'text/x-c++src',
+                    '.java': 'text/x-java-source',
+                    '.go': 'text/x-go',
+                    '.rb': 'text/x-ruby',
+                    '.php': 'text/x-php',
+                    '.sh': 'text/x-shellscript',
+                    '.rs': 'text/x-rustsrc',
+                    '.r': 'text/x-r',
+                    '.ps1': 'text/x-powershell',
+                    '.png': 'image/png',
+                    '.jpeg': 'image/jpeg',
+                    '.jpg': 'image/jpeg',
+                    '.gif': 'image/gif',
+                    '.webp': 'image/webp',
+                    '.svg': 'image/svg+xml',
+                    '.mp4': 'video/mp4',
+                    '.webm': 'video/webm',
+                    '.ogg': 'video/ogg'
+                };
+
                 const uploadData = {
                     filename: file.name,
-                    fileType: file.type || 'application/octet-stream',
+                    fileType: mimeTypeMap[fileExtension] || file.type || 'application/octet-stream',
                     fileData: base64Data,
                     allowDownloads: allowDownloads.checked,
                     allowCopying: allowCopying.checked,
