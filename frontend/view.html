@@ -316,7 +316,84 @@
                 padding: 40px 20px;
             }
         }
+
+        /* Notebook Styles */
+        .nb-notebook {
+            width: 100%;
+            text-align: left;
+        }
+
+        .nb-cell {
+            margin-bottom: 16px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        .nb-input,
+        .nb-output {
+            overflow-x: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .nb-input {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(135, 186, 195, 0.2);
+            color: #D6F4ED;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            white-space: pre;
+        }
+
+        .nb-output {
+            color: #e8e8f0;
+            padding: 8px 0;
+        }
+
+        .nb-output img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        .nb-markdown-cell {
+            color: #e8e8f0;
+            line-height: 1.6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        }
+
+        .nb-markdown-cell h1,
+        .nb-markdown-cell h2,
+        .nb-markdown-cell h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+            color: #D6F4ED;
+        }
+
+        .nb-markdown-cell p {
+            margin-bottom: 12px;
+        }
+
+        .nb-markdown-cell code {
+            background: rgba(135, 186, 195, 0.2);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .nb-markdown-cell pre {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked@17.0.1/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@6.0.6/ansi_up.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notebookjs@0.8.3/notebook.min.js"></script>
 </head>
 
 <body>
@@ -597,6 +674,22 @@
                 viewer.innerHTML = `<video src="${url}" controls width="100%" height="auto"></video>`;
                 if (!allowDownloads) {
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }
+            } else if (type === 'application/x-ipynb+json') {
+                try {
+                    const text = await blob.text();
+                    const data = JSON.parse(text);
+                    const notebook = nb.parse(data);
+                    const rendered = notebook.render();
+                    viewer.innerHTML = '';
+                    viewer.appendChild(rendered);
+
+                    if (!allowDownloads) {
+                        URL.revokeObjectURL(url);
+                    }
+                } catch (err) {
+                    console.error("Notebook render error:", err);
+                    viewer.innerHTML = `<div class="error-message">Failed to render notebook: ${err.message}</div>`;
                 }
             } else if (isTextFile(type, filename)) {
                 const text = await blob.text();

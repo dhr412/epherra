@@ -8,10 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -110,44 +106,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	finalContentType := metadata.FileType
 	finalFilename := metadata.Filename
 	finalBytes := fileBytes
-
-	if metadata.FileType == "application/x-ipynb+json" {
-		convCtx, convCancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer convCancel()
-
-		tempDir, err := os.MkdirTemp("", "ipynb-conversion-")
-		if err != nil {
-			http.Error(w, "Failed to create temp directory for conversion", http.StatusInternalServerError)
-			return
-		}
-		defer os.RemoveAll(tempDir)
-
-		ipynbPath := filepath.Join(tempDir, "notebook.ipynb")
-		if err := os.WriteFile(ipynbPath, fileBytes, 0644); err != nil {
-			http.Error(w, "Failed to write temp ipynb for conversion", http.StatusInternalServerError)
-			return
-		}
-
-		cmd := exec.CommandContext(convCtx, "jupyter", "nbconvert", "--to", "html", "--stdout", ipynbPath)
-
-		output, err := cmd.Output()
-		if err != nil {
-			if ee, ok := err.(*exec.ExitError); ok {
-				errMsg := fmt.Sprintf("nbconvert command failed with exit code: %s. Stderr: %s", ee, string(ee.Stderr))
-				fmt.Println(errMsg)
-				http.Error(w, "Failed to convert notebook to HTML.", http.StatusInternalServerError)
-				return
-			}
-			errMsg := fmt.Sprintf("nbconvert command failed: %s", err)
-			fmt.Println(errMsg)
-			http.Error(w, "Failed to convert notebook to HTML.", http.StatusInternalServerError)
-			return
-		}
-
-		finalBytes = output
-		finalContentType = "text/html"
-		finalFilename = strings.TrimSuffix(metadata.Filename, filepath.Ext(metadata.Filename)) + ".html"
-	}
 
 	update := bson.M{"$inc": bson.M{"currentViews": 1}}
 	if metadata.MaxViews != nil && metadata.CurrentViews+1 >= *metadata.MaxViews {
