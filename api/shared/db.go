@@ -32,6 +32,12 @@ type FileMetadata struct {
 	IsEncrypted    bool          `bson:"isEncrypted" json:"isEncrypted"`
 }
 
+type RateLimit struct {
+	IP      string    `bson:"ip"`
+	Count   int       `bson:"count"`
+	ResetAt time.Time `bson:"resetAt"`
+}
+
 var (
 	mongoClient     *mongo.Client
 	collection      *mongo.Collection
@@ -87,6 +93,48 @@ func GetDB() (*mongo.Collection, *mongo.GridFSBucket, error) {
 	bucket = db.GridFSBucket(options.GridFSBucket().SetName("fs"))
 
 	return collection, bucket, nil
+}
+
+func CheckRateLimit(ctx context.Context, ip string) error {
+	col, _, err := GetDB()
+	if err != nil {
+		return err
+	}
+	limitCol := col.Database().Collection("rate_limits")
+
+	now := time.Now()
+	var limit RateLimit
+	err = limitCol.FindOne(ctx, bson.M{"ip": ip}).Decode(&limit)
+
+	if err == mongo.ErrNoDocuments {
+		_, err = limitCol.InsertOne(ctx, RateLimit{
+			IP:      ip,
+			Count:   1,
+			ResetAt: now.Add(24 * time.Hour),
+		})
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	if now.After(limit.ResetAt) {
+		_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip}, bson.M{
+			"$set": bson.M{
+				"count":   1,
+				"resetAt": now.Add(24 * time.Hour),
+			},
+		})
+		return err
+	}
+
+	if limit.Count >= 5 {
+		return fmt.Errorf("rate limit exceeded")
+	}
+
+	_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip}, bson.M{
+		"$inc": bson.M{"count": 1},
+	})
+	return err
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"epherra-api/shared"
 	"io"
+	"net"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +27,17 @@ type UploadRequest struct {
 	MaxViews       *int      `json:"maxViews"`
 	ExpiresAt      time.Time `json:"expiresAt"`
 	PasswordHash   string    `json:"passwordHash"`
+}
+
+func GetClientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		return strings.Split(fwd, ",")[0]
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
 }
 
 func setCORSHeaders(w http.ResponseWriter) {
@@ -46,6 +59,21 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 20*1024*1024)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	ip := GetClientIP(r)
+	if err := shared.CheckRateLimit(ctx, ip); err != nil {
+		if err.Error() == "rate limit exceeded" {
+			http.Error(w, "Rate limit exceeded: max 5 uploads per 24 hours", http.StatusTooManyRequests)
+		} else {
+			http.Error(w, "Database error checking rate limit", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	collection, bucket, err := shared.GetDB()
 	if err != nil {
 		http.Error(w, "Database connection failed", http.StatusInternalServerError)
@@ -54,7 +82,11 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	var req UploadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		if err.Error() == "http: request body too large" {
+			http.Error(w, "File too large (max 20MB)", http.StatusRequestEntityTooLarge)
+		} else {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -115,7 +147,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		metadata.IsEncrypted = true
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if len(fileBytes) <= maxInlineSize {
