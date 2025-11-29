@@ -594,6 +594,10 @@
                     return;
                 }
 
+                if (response.status === 429) {
+                    throw new Error('Rate limit exceeded');
+                }
+
                 if (!response.ok) {
                     throw new Error('Failed to retrieve file');
                 }
@@ -750,6 +754,7 @@
                 } else if (response.ok) {
                     return fetch(`/view-file/${token}`).then(displayFile);
                 } else {
+                    if (response.status === 429) throw new Error('Rate limit exceeded');
                     if (response.status === 410) throw new Error('File has expired');
                     if (response.status === 404) throw new Error('File not found');
                     throw new Error('File unavailable');

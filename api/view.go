@@ -47,6 +47,16 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	ip := shared.GetClientIP(r)
+	if err := shared.CheckRateLimit(ctx, ip, "view", 16, 1*time.Hour); err != nil {
+		if err.Error() == "rate limit exceeded" {
+			http.Error(w, "Rate limit exceeded: max 16 views per hour", http.StatusTooManyRequests)
+		} else {
+			http.Error(w, "Database error checking rate limit", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	var metadata shared.FileMetadata
 	err = collection.FindOne(ctx, bson.M{"token": token}).Decode(&metadata)
 	if err != nil {

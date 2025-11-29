@@ -3,10 +3,12 @@ package shared
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +36,7 @@ type FileMetadata struct {
 
 type RateLimit struct {
 	IP      string    `bson:"ip"`
+	Action  string    `bson:"action"`
 	Count   int       `bson:"count"`
 	ResetAt time.Time `bson:"resetAt"`
 }
@@ -95,7 +98,18 @@ func GetDB() (*mongo.Collection, *mongo.GridFSBucket, error) {
 	return collection, bucket, nil
 }
 
-func CheckRateLimit(ctx context.Context, ip string) error {
+func GetClientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		return strings.Split(fwd, ",")[0]
+	}
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
+}
+
+func CheckRateLimit(ctx context.Context, ip string, action string, maxRequests int, window time.Duration) error {
 	col, _, err := GetDB()
 	if err != nil {
 		return err
@@ -104,13 +118,14 @@ func CheckRateLimit(ctx context.Context, ip string) error {
 
 	now := time.Now()
 	var limit RateLimit
-	err = limitCol.FindOne(ctx, bson.M{"ip": ip}).Decode(&limit)
+	err = limitCol.FindOne(ctx, bson.M{"ip": ip, "action": action}).Decode(&limit)
 
 	if err == mongo.ErrNoDocuments {
 		_, err = limitCol.InsertOne(ctx, RateLimit{
 			IP:      ip,
+			Action:  action,
 			Count:   1,
-			ResetAt: now.Add(24 * time.Hour),
+			ResetAt: now.Add(window),
 		})
 		return err
 	} else if err != nil {
@@ -118,20 +133,20 @@ func CheckRateLimit(ctx context.Context, ip string) error {
 	}
 
 	if now.After(limit.ResetAt) {
-		_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip}, bson.M{
+		_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip, "action": action}, bson.M{
 			"$set": bson.M{
 				"count":   1,
-				"resetAt": now.Add(24 * time.Hour),
+				"resetAt": now.Add(window),
 			},
 		})
 		return err
 	}
 
-	if limit.Count >= 5 {
+	if limit.Count >= maxRequests {
 		return fmt.Errorf("rate limit exceeded")
 	}
 
-	_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip}, bson.M{
+	_, err = limitCol.UpdateOne(ctx, bson.M{"ip": ip, "action": action}, bson.M{
 		"$inc": bson.M{"count": 1},
 	})
 	return err
